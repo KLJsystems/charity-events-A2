@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Search Events</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <a href="/index.html">Home</a>
+      <a href="/search.html" aria-current="page">Search</a>
+    </nav>
+    <h1>Search Events</h1>
+  </header>
+
+  <main>
+    <form id="search-form" class="card">
+      <label>From <input type="date" name="from"></label>
+      <label>To <input type="date" name="to"></label>
+      <label>Location <input name="location" placeholder="e.g. Lismore"></label>
+      <label>Category <input name="category" placeholder="e.g. Fundraiser"></label>
+      <button type="submit">Search</button>
+    </form>
+
+    <div id="search-status" class="muted"></div>
+    <ul id="search-results" class="card-list"></ul>
+  </main>
+
+  <script>
+    const form = document.getElementById('search-form');
+    const statusEl = document.getElementById('search-status');
+    const listEl = document.getElementById('search-results');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      statusEl.textContent = 'Searching…';
+      listEl.innerHTML = '';
+
+      const q = new URLSearchParams(new FormData(form));
+      const res = await fetch('/api/search?' + q.toString());
+      if (!res.ok) { statusEl.textContent = 'Search failed.'; return; }
+      const rows = await res.json();
+
+      if (!rows.length) { statusEl.textContent = 'No events found.'; return; }
+      statusEl.textContent = '';
+      rows.forEach(ev => {
+        if (ev.suspended) return; // hide suspended
+        const li = document.createElement('li');
+        li.className = 'card';
+        li.innerHTML = `
+          <div class="card-title"><a href="/event.html?id=${ev.event_id}">${ev.event_name}</a></div>
+          <div class="card-sub">${ev.event_date} — ${ev.location ?? ''} ${ev.category ? ' • ' + ev.category : ''}</div>
+          <div>${ev.description ?? ''}</div>
+        `;
+        listEl.appendChild(li);
+      });
+    });
+  </script>
+</body>
+</html>

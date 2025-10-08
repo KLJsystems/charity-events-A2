@@ -12,3 +12,11 @@ form { display: grid; gap: 0.5rem; max-width: 500px; margin-top: 0.5rem; }
 label { display: grid; gap: 0.25rem; }
 input, button { padding: 0.5rem; font-size: 1rem; }
 button { cursor: pointer; }
+.site-header nav { display:flex; gap:1rem; margin-bottom:.5rem; }
+.site-header nav a { color:#9cd; text-decoration:none; }
+.site-header nav a[aria-current="page"] { text-decoration:underline; }
+
+.badge { font-size:.75rem; padding:.1rem .5rem; border-radius:999px; margin-left:.5rem; }
+.badge.upcoming { background:#00ff0d; color:#fff; }
+.badge.past { background:#616161; color:#fff; }
+.badge.suspended { background:#b71c1c; color:#fff; }

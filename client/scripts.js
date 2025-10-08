@@ -1,3 +1,32 @@
+function statusLabel(ev) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (ev.suspended) return 'SUSPENDED';
+  if (ev.event_date < today) return 'PAST';
+  return 'UPCOMING';
+}
+
+function eventCardHTML(ev) {
+  const date = ev.event_date ? new Date(ev.event_date).toISOString().slice(0, 10) : '';
+  const badge = statusLabel(ev).toLowerCase(); // upcoming | past | suspended
+  const price = Number(ev.ticket_price || 0).toFixed(2);
+  const goal = Number(ev.goal_amount || 0);
+  const raised = Number(ev.raised_amount || 0);
+  const progress = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
+
+  return `
+    <div class="card-title">
+      <a href="/event.html?id=${ev.event_id}">${ev.event_name}</a>
+      <span class="badge ${badge}">${badge.toUpperCase()}</span>
+    </div>
+    <div class="card-sub">
+      ${date}${ev.start_time ? ` ${ev.start_time.slice(0, 5)}` : ''} — ${ev.location ?? ''}
+      ${ev.category ? ` • ${ev.category}` : ''}
+    </div>
+    <div>${ev.description ?? ''}</div>
+    <div class="tiny muted">Ticket: $${price} • Goal progress: ${progress}%</div>
+  `;
+}
+
 async function loadEvents() {
   const status = document.getElementById('events-status');
   const list = document.getElementById('events-list');
@@ -11,13 +40,12 @@ async function loadEvents() {
 
     status.textContent = events.length ? '' : 'No events found.';
     events.forEach(ev => {
+      // Hide suspended events on the Home page
+      if (ev.suspended) return;
+
       const li = document.createElement('li');
-      const date = ev.event_date ? new Date(ev.event_date).toISOString().slice(0, 10) : '';
-      li.innerHTML = `
-        <div class="card-title">${ev.event_name}</div>
-        <div class="card-sub">${date} ${ev.location ? '— ' + ev.location : ''}</div>
-        <div>${ev.description ?? ''}</div>
-      `;
+      li.className = 'card';
+      li.innerHTML = eventCardHTML(ev);
       list.appendChild(li);
     });
   } catch (err) {
@@ -36,6 +64,7 @@ async function addEvent(e) {
     event_date: form.event_date.value, // yyyy-mm-dd
     location: form.location.value.trim() || null,
     description: form.description.value.trim() || null
+    // later you can add: category, ticket_price, etc.
   };
   if (!payload.event_name || !payload.event_date) {
     msg.textContent = 'Please provide name and date.';

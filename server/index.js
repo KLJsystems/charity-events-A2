@@ -95,5 +95,59 @@ app.delete('/api/events/:id', async (req, res) => {
   }
 });
 
+app.get('/api/search', async (req, res) => {
+  const { from, to, location, category, include_suspended } = req.query;
+  const where = [];
+  const params = [];
+
+  if (!include_suspended) where.push('suspended = 0');
+  if (from) { where.push('event_date >= ?'); params.push(from); }
+  if (to)   { where.push('event_date <= ?'); params.push(to); }
+  if (location) { where.push('location LIKE ?'); params.push(`%${location}%`); }
+  if (category) { where.push('category = ?'); params.push(category); }
+
+  const sql = `
+    SELECT * FROM events
+    ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
+    ORDER BY event_date, start_time
+  `;
+
+  try {
+    const [rows] = await db.query(sql, params);
+    res.json(rows);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+app.patch('/api/events/:id/suspend', async (req, res) => {
+  const { suspended } = req.body;
+  try {
+    const [r] = await db.query('UPDATE events SET suspended=? WHERE event_id=?',
+      [suspended ? 1 : 0, req.params.id]);
+    if (r.affectedRows === 0) return res.status(404).json({ error: 'Event not found' });
+    res.json({ ok: true, suspended: !!suspended });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Failed to update suspension' });
+  }
+});
+
+app.post('/api/events/:id/register', async (req, res) => {
+  const { full_name, email, tickets } = req.body;
+  if (!full_name || !email) return res.status(400).json({ error: 'full_name and email are required' });
+  try {
+    await db.query(
+      'INSERT INTO registrations (event_id, full_name, email, tickets) VALUES (?,?,?,?)',
+      [req.params.id, full_name, email, tickets || 1]
+    );
+    res.status(201).json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
 const PORT = 3000;
 app.listen(PORT, () => console.log(`✅ Server running at http://localhost:${PORT}`));
