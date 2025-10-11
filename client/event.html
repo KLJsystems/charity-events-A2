@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Event Details</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <nav>
+      <a href="/index.html">Home</a>
+      <a href="/search.html">Search</a>
+    </nav>
+    <h1 id="title">Event</h1>
+  </header>
+
+  <main>
+    <section id="event-card" class="card"></section>
+
+    <section class="card">
+      <h3>Register</h3>
+      <form id="reg-form">
+        <label>Full name <input name="full_name" required></label>
+        <label>Email <input name="email" type="email" required></label>
+        <label>Tickets <input name="tickets" type="number" min="1" value="1"></label>
+        <button type="submit">Register</button>
+      </form>
+      <div id="reg-msg" class="muted"></div>
+    </section>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const card = document.getElementById('event-card');
+    const titleEl = document.getElementById('title');
+
+    async function loadEvent() {
+      const res = await fetch('/api/events/' + id);
+      if (!res.ok) { card.textContent = 'Event not found.'; return; }
+      const ev = await res.json();
+      titleEl.textContent = ev.event_name;
+
+      const date = ev.event_date ?? '';
+      const price = Number(ev.ticket_price || 0).toFixed(2);
+      const goal = Number(ev.goal_amount || 0);
+      const raised = Number(ev.raised_amount || 0);
+      const progress = goal > 0 ? Math.min(100, Math.round((raised/goal)*100)) : 0;
+
+      card.innerHTML = `
+        <div class="card-title">${ev.event_name}</div>
+        <div class="card-sub">
+          ${date} ${ev.start_time ? ev.start_time.slice(0,5) : ''} – ${ev.end_time ? ev.end_time.slice(0,5) : ''}
+          • ${ev.location ?? ''} ${ev.category ? ' • ' + ev.category : ''}
+        </div>
+        <p>${ev.description ?? ''}</p>
+        <p><strong>Ticket:</strong> $${price} ${price === '0.00' ? '(Free)' : ''}</p>
+        <div>
+          <strong>Goal:</strong> $${goal.toFixed(2)} • <strong>Raised:</strong> $${raised.toFixed(2)} • <strong>Progress:</strong> ${progress}%
+          <div style="background:#333;height:8px;border-radius:999px;margin-top:6px;">
+            <div style="background:#4caf50;height:8px;width:${progress}%;border-radius:999px;"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    loadEvent();
+
+    // registration
+    const form = document.getElementById('reg-form');
+    const msg = document.getElementById('reg-msg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(form));
+      try {
+        const res = await fetch('/api/events/' + id + '/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error();
+        msg.textContent = 'Registration successful!';
+        form.reset();
+      } catch {
+        msg.textContent = 'Registration failed.';
+      }
+    });
+  </script>
+</body>
+</html>
